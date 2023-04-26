@@ -1,0 +1,3 @@
+[submodule "SynergyNet"]
+	path = SynergyNet
+	url = https://github.com/choyingw/SynergyNet.git
