@@ -12,6 +12,10 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from configparser import ConfigParser
 from itertools import zip_longest
+import yaml
+# load YAML file
+with open('config.yaml', 'r') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 # 如果有多片gpu时使用
 # device_ids = [0, 1, 2]  # 多个GPU的ID
 # model = MyModel()  # 自定义模型
@@ -19,22 +23,19 @@ from itertools import zip_longest
 
 # 对于一片gpu
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# 读取config文件
-config = ConfigParser()
-config.read('/content/SPACE/config.ini')
-audio_length,_ = config.get('S2L_LSTM', 'audio_length').split(';', 1)
-lmk_dim,_ = config.get('S2L_LSTM', 'lmk_dim').split(';', 1)
-hidden_size = int(config.get('S2L_LSTM', 'hidden_size'))
-batchsize = int(config.get('train', 'batchsize'))
-epoch = int(config.get('train', 'epoch'))
-pretrain = config.get('train', 'pretrain')
+audio_length = config['S2L_LSTM']['audio_length']
+lmk_dim = config['S2L_LSTM']['lmk_dim']
+hidden_size = config['S2L_LSTM']['hidden_size']
+batchsize = config['train']['batchsize']
+epoch = config['train']['epoch']
+pretrain = config['train']['pretrain']
 
 #####定义模型########
 audio_net = model.AudioEncoder().to(device)
 lmk_net = model.Encoder68().to(device)
-s2l_lstm = model.S2L_LSTMModel(int(audio_length)+int(lmk_dim)*68, hidden_size, 2, 68*3).to(device)
-if pretrain == True:
-  nets_loaded = torch.load('models1.pth')
+s2l_lstm = model.S2L_LSTMModel(audio_length+lmk_dim*68, hidden_size, 2, 68*3).to(device)
+if pretrain == 'True':
+  nets_loaded = torch.load('./checkpoints/models4.0.pth')
   audio_net.load_state_dict(nets_loaded['audio_net'])
   lmk_net.load_state_dict(nets_loaded['lmk_net'])
   s2l_lstm.load_state_dict(nets_loaded['s2l_lstm'])
@@ -58,7 +59,7 @@ dataloader = DataLoader(dataset, batch_size=batchsize, shuffle=True)
 
 #绝对误差损失函数
 loss1 = nn.L1Loss()
-step = 0
+step = 740*4
 for i in range(epoch):
   print('----------------第{}轮训练开始-------------------'.format(i+1))
   print("dataloader读取")
@@ -149,13 +150,14 @@ for i in range(epoch):
       loss_all += loss
       count += 1
       step += 1
-      if step%740==0:
+      if step%370==0:
         print('第{}次训练'.format(step))
         print('参数保存')
         # 保存模型参数
         state_dicts = {'audio_net': audio_net.state_dict(), 'lmk_net': lmk_net.state_dict(), 
         's2l_lstm': s2l_lstm.state_dict()}
-        torch.save(state_dicts, 'models{}.pth'.format(step))
+        a = step/740
+        torch.save(state_dicts, '/content/drive/MyDrive/myself/checkpoints/models{}.pth'.format(step))
     print(loss_all/count)
     ##对所有网络梯度清零
     optimizer.zero_grad()
