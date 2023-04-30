@@ -9,6 +9,7 @@ from models import model
 import cv2
 import numpy as np
 from models import funtion
+import yaml
 
 
 
@@ -22,13 +23,13 @@ class AudioImageDataset(Dataset):
         # 获取所有音频文件路径
         self.audio_files = os.listdir(audio_folder)
         self.audio_files = [os.path.join(audio_folder, f) for f in self.audio_files]
-        # 读取config文件
-        config = ConfigParser()
-        config.read('/content/SPACE/config.ini')
-        self.sr = config.get('mcff', 'sr')
-        self.n_fft = config.get('mcff', 'n_fft')
-        self.n_mfcc = config.get('mcff', 'n_mfcc')
-        self.fps = config.get('mcff', 'fps')
+        # load YAML file
+        with open('config.yaml', 'r') as f:
+          config = yaml.load(f, Loader=yaml.FullLoader)
+        self.sr = config['mcff']['sr']
+        self.n_fft = config['mcff']['n_fft']
+        self.n_mfcc = config['mcff']['n_mfcc']
+        self.fps = config['mcff']['fps']
 
     def __len__(self):
         return len(self.audio_files)
@@ -37,7 +38,7 @@ class AudioImageDataset(Dataset):
         # 加载音频
         audio_path = self.audio_files[idx]
          # 提取MFCC特征
-        mfcc = audio_feature = funtion.auido_feature_extract(audio_path, int(self.sr), int(self.n_fft),
+        mfcc = funtion.auido_feature_extract(audio_path, int(self.sr), int(self.n_fft),
                                             int(self.n_mfcc), int(self.fps))
 
         mfcc = torch.from_numpy(mfcc).float()
@@ -55,6 +56,7 @@ class AudioImageDataset(Dataset):
             images.append(img)
         # 转换数据类型
         # audio = torch.from_numpy(audio).float()
+        #将列表转为np，方便转为tensor返回
         images = np.array(images)
         # print(images.shape,'3')
 
